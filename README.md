@@ -1,5 +1,4 @@
-# FindStreetFood
-um aplicativo que mostra food trucks e comidas de rua no mapa, permitindo que usuários registrem locais usando GPS, publiquem fotos dos pratos e avaliem os estabelecimentos.
+# Aplicativo de Leilão de Quadros
 
 Bruno Lourenço Neves - 202312035 -
 Leonardo Motta dos Santos - 202222267 -
