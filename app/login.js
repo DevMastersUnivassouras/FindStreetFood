@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, Keyboard } from 'react-native';
 
 import { IconeSimbolo } from '@/components/ui/icone-simbolo';
 import { BotaoAutenticacao } from '@/src/auth/components/botao-autenticacao';
@@ -72,18 +72,24 @@ export default function TelaLogin() {
         secureTextEntry
       />
 
-      <BotaoAutenticacao title="Entrar" onPress={clicarEntrar} loading={carregando} />
+      <BotaoAutenticacao title="Entrar" onPress={() => {
+        clicarEntrar();
+        Keyboard.dismiss();
+      }} loading={carregando} />
 
       {podeMostrarBiometria ? (
         <BotaoAutenticacao
           title="Entrar com biometria"
-          onPress={clicarBiometria}
+          onPress={() => {
+            clicarBiometria();
+            Keyboard.dismiss();
+          }}
           loading={carregando}
           variant="secondary"
         />
       ) : null}
 
-      <Link href="/register" style={styles.linkCadastro}>
+      <Link href="/register" style={styles.linkCadastro} onPress={() => Keyboard.dismiss()}>
         Não tem conta? Cadastre-se
       </Link>
     </View>
