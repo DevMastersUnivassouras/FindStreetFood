@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS leilao_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cpf TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
+  birth_date DATE,
   phone TEXT NOT NULL,
   user_role TEXT NOT NULL DEFAULT 'user',
   wallet_balance NUMERIC(12, 2) NOT NULL DEFAULT 0,
@@ -23,6 +24,9 @@ ADD COLUMN IF NOT EXISTS cpf TEXT;
 
 ALTER TABLE leilao_users
 ADD COLUMN IF NOT EXISTS phone TEXT;
+
+ALTER TABLE leilao_users
+ADD COLUMN IF NOT EXISTS birth_date DATE;
 
 ALTER TABLE leilao_users
 ADD COLUMN IF NOT EXISTS user_role TEXT NOT NULL DEFAULT 'user';

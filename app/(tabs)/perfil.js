@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAutenticacao } from '@/src/auth/context/contexto-autenticacao';
 import { API_BASE_URL } from '@/src/auth/services/servico-api';
@@ -19,12 +20,69 @@ function montarUrlImagem(url) {
   return `${API_BASE_URL}${url}`;
 }
 
+function dataParaIso(valor) {
+  const texto = String(valor || '').trim();
+  const matchBr = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (matchBr) {
+    return `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}`;
+  }
+
+  const matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (matchIso) {
+    return texto;
+  }
+
+  return '';
+}
+
+function dataIsoParaBr(valor) {
+  const texto = String(valor || '').trim();
+  const matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!matchIso) {
+    return texto;
+  }
+
+  return `${matchIso[3]}/${matchIso[2]}/${matchIso[1]}`;
+}
+
+function dateParaBr(data) {
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const ano = String(data.getFullYear());
+  return `${dia}/${mes}/${ano}`;
+}
+
+function dataTextoParaDate(valor) {
+  const iso = dataParaIso(valor);
+  const match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const ano = Number(match[1]);
+  const mes = Number(match[2]);
+  const dia = Number(match[3]);
+  const data = new Date(ano, mes - 1, dia);
+
+  if (Number.isNaN(data.getTime())) {
+    return null;
+  }
+
+  return data;
+}
+
 export default function TelaPerfil() {
   const { usuario, token, atualizarDadosPerfil, atualizarFotoPerfil, removerFotoPerfilUsuario } = useAutenticacao();
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
+  const [dataNascimentoSelecionada, setDataNascimentoSelecionada] = useState(new Date(2000, 0, 1));
+  const [mostrarCalendarioNascimento, setMostrarCalendarioNascimento] = useState(false);
   const [salvandoDados, setSalvandoDados] = useState(false);
   const [acaoFoto, setAcaoFoto] = useState('');
   const [previewFoto, setPreviewFoto] = useState(null);
@@ -37,7 +95,59 @@ export default function TelaPerfil() {
     setSobrenome(usuario?.lastName || '');
     setEmail(usuario?.email || '');
     setTelefone(usuario?.phone || '');
-  }, [usuario?.firstName, usuario?.lastName, usuario?.email, usuario?.phone]);
+    const dataTexto = dataIsoParaBr(usuario?.birthDate || '');
+    setDataNascimento(dataTexto);
+
+    const dataConvertida = dataTextoParaDate(dataTexto);
+    if (dataConvertida) {
+      setDataNascimentoSelecionada(dataConvertida);
+    }
+  }, [usuario?.firstName, usuario?.lastName, usuario?.email, usuario?.phone, usuario?.birthDate]);
+
+  function abrirCalendarioNascimento() {
+    const dataAtual = dataTextoParaDate(dataNascimento) || dataNascimentoSelecionada;
+    setDataNascimentoSelecionada(dataAtual);
+    setMostrarCalendarioNascimento(true);
+  }
+
+  function aoTrocarDataNascimento(event, dataSelecionada) {
+    if (Platform.OS === 'android') {
+      setMostrarCalendarioNascimento(false);
+    }
+
+    if (event?.type === 'dismissed' || !dataSelecionada) {
+      return;
+    }
+
+    setDataNascimentoSelecionada(dataSelecionada);
+    setDataNascimento(dateParaBr(dataSelecionada));
+  }
+
+  function idadeMinimaAtingida(dataIso) {
+    const dataNormalizada = dataParaIso(dataIso);
+    const match = String(dataNormalizada || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) {
+      return false;
+    }
+
+    const ano = Number(match[1]);
+    const mes = Number(match[2]);
+    const dia = Number(match[3]);
+    const nascimento = new Date(Date.UTC(ano, mes - 1, dia));
+
+    if (
+      nascimento.getUTCFullYear() !== ano
+      || nascimento.getUTCMonth() !== mes - 1
+      || nascimento.getUTCDate() !== dia
+    ) {
+      return false;
+    }
+
+    const hoje = new Date();
+    const limite = new Date(Date.UTC(hoje.getUTCFullYear() - 18, hoje.getUTCMonth(), hoje.getUTCDate()));
+    return nascimento <= limite;
+  }
 
   const carregarResumoPerfil = useCallback(async () => {
     if (!token) {
@@ -72,9 +182,16 @@ export default function TelaPerfil() {
     const sobrenomeFinal = sobrenome.trim();
     const emailFinal = email.trim().toLowerCase();
     const telefoneFinal = telefone.trim();
+    const dataNascimentoFinal = dataNascimento.trim();
+    const birthDateIso = dataParaIso(dataNascimentoFinal);
 
-    if (!nomeFinal || !sobrenomeFinal || !emailFinal || !telefoneFinal) {
-      Alert.alert('Atenção', 'Nome, sobrenome, email e telefone são obrigatórios.');
+    if (!nomeFinal || !sobrenomeFinal || !emailFinal || !telefoneFinal || !dataNascimentoFinal) {
+      Alert.alert('Atenção', 'Nome, sobrenome, email, telefone e data de nascimento são obrigatórios.');
+      return;
+    }
+
+    if (!idadeMinimaAtingida(dataNascimentoFinal)) {
+      Alert.alert('Atenção', 'É necessário ter no mínimo 18 anos. Use data no formato DD/MM/AAAA.');
       return;
     }
 
@@ -85,6 +202,7 @@ export default function TelaPerfil() {
         lastName: sobrenomeFinal,
         email: emailFinal,
         phone: telefoneFinal,
+        birthDate: birthDateIso,
       });
       Alert.alert('Sucesso', 'Perfil atualizado no banco de dados.');
     } catch (error) {
@@ -282,6 +400,31 @@ export default function TelaPerfil() {
           keyboardType="phone-pad"
         />
 
+        <Text style={styles.label}>Data de nascimento</Text>
+        <Pressable onPress={abrirCalendarioNascimento} style={styles.input}>
+          <Text style={dataNascimento ? styles.inputTexto : styles.inputPlaceholder}>
+            {dataNascimento || 'DD/MM/AAAA'}
+          </Text>
+        </Pressable>
+
+        {mostrarCalendarioNascimento && (
+          <View style={styles.boxCalendario}>
+            <DateTimePicker
+              value={dataNascimentoSelecionada}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={aoTrocarDataNascimento}
+            />
+
+            {Platform.OS === 'ios' && (
+              <Pressable style={styles.botaoCalendario} onPress={() => setMostrarCalendarioNascimento(false)}>
+                <Text style={styles.textoBotaoCalendario}>Fechar calendário</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         <Pressable onPress={salvarPerfil} style={styles.botaoPrincipal} disabled={salvandoDados}>
           <Text style={styles.textoBotaoPrincipal}>{salvandoDados ? 'Salvando...' : 'Salvar Alterações'}</Text>
         </Pressable>
@@ -428,6 +571,30 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     color: '#0f172a',
     marginBottom: 4,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  inputTexto: {
+    color: '#0f172a',
+  },
+  inputPlaceholder: {
+    color: '#94a3b8',
+  },
+  boxCalendario: {
+    marginBottom: 4,
+  },
+  botaoCalendario: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+  },
+  textoBotaoCalendario: {
+    color: '#0f172a',
+    fontSize: 12,
+    fontWeight: '700',
   },
   botaoPrincipal: {
     marginTop: 8,

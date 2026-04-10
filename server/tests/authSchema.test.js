@@ -13,6 +13,7 @@ test('registerSchema normaliza cpf e email', () => {
     cpf: '123.456.789-00',
     email: 'CONTA@EXAMPLE.COM ',
     phone: '11988887777',
+    birthDate: '2000-01-10',
     firstName: 'Usuario',
     lastName: 'Teste',
     password: 'senha123',
@@ -21,6 +22,7 @@ test('registerSchema normaliza cpf e email', () => {
 
   assert.equal(parsed.cpf, '12345678900');
   assert.equal(parsed.email, 'conta@example.com');
+  assert.equal(parsed.birthDate, '2000-01-10');
   assert.equal(parsed.biometricEnabled, false);
 });
 
@@ -30,10 +32,26 @@ test('registerSchema rejeita senha e confirmacao diferentes', () => {
       cpf: '12345678900',
       email: 'usuario@example.com',
       phone: '11988887777',
+      birthDate: '2000-01-10',
       firstName: 'Usuario',
       lastName: 'Teste',
       password: 'senha123',
       passwordConfirmation: 'senha321',
+    });
+  });
+});
+
+test('registerSchema rejeita menor de idade', () => {
+  assert.throws(() => {
+    registerSchema.parse({
+      cpf: '12345678900',
+      email: 'usuario@example.com',
+      phone: '11988887777',
+      birthDate: '2026-01-01',
+      firstName: 'Usuario',
+      lastName: 'Teste',
+      password: 'senha123',
+      passwordConfirmation: 'senha123',
     });
   });
 });
@@ -62,7 +80,9 @@ test('updateProfileSchema normaliza email', () => {
     lastName: 'Padrao',
     email: 'CONTATO@EXAMPLE.COM',
     phone: '11988887777',
+    birthDate: '1998-12-30',
   });
 
   assert.equal(parsed.email, 'contato@example.com');
+  assert.equal(parsed.birthDate, '1998-12-30');
 });
